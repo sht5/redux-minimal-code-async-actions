@@ -1,11 +1,8 @@
 {
   "name": "redux-minimal-code-async-actions",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "minimal boilerplate async redux actions",
   "main": "redux_async_middleware",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [
     "async",
     "redux",
@@ -14,10 +11,18 @@
     "middleware",
     "action"
   ],
-  "repository" :
-  { "type" : "git"
-  , "url" : "https://github.com/sht5/https-github.com-sht5-redux-minimal-code-async-actions"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sht5/https-github.com-sht5-redux-minimal-code-async-actions"
   },
   "author": "Shahar Taite",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-es2015": "^6.24.1"
+  },
+  "scripts": {
+    "build": "babel src  --plugins transform-object-rest-spread --presets=babel-preset-es2015 --out-dir dist "
+  }
 }
