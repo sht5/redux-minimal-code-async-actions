@@ -1,8 +1,8 @@
 {
   "name": "redux-minimal-code-async-actions",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "minimal boilerplate async redux actions",
-  "main": "redux_async_middleware",
+  "main": "dist/redux_async_middleware.js",
   "keywords": [
     "async",
     "redux",
