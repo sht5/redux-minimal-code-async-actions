@@ -1,0 +1,19 @@
+{
+  "name": "redux-minimal-code-async-actions",
+  "version": "1.0.0",
+  "description": "minimal boilerplate async redux actions",
+  "main": "redux_async_middleware",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "async",
+    "redux",
+    "minimal",
+    "code",
+    "middleware",
+    "action"
+  ],
+  "author": "Shahar Taite",
+  "license": "ISC"
+}
