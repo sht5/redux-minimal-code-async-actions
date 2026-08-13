@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Async Actions, Minimal Code — Field Notes</title>
+<style>
+  :root{
+    --bg: #e9e6de;
+    --card: #f8f6f1;
+    --ink: #232019;
+    --ink-dim: #6f695d;
+    --ink-faint: #a49c8b;
+    --accent: #a2321f;
+    --accent-soft: #f1e2dc;
+    --line: #cfc8b8;
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+    --sans: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); overflow:hidden;
+  }
+  .deck{ width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+  .binder{
+    display:flex;
+    width:min(1180px, 94vw); height:min(700px, 86vh);
+    box-shadow: 0 34px 80px rgba(35,32,25,0.16);
+  }
+  .tabs{
+    flex:none; width:210px; background:var(--bg);
+    border:1px solid var(--line); border-right:none;
+    display:flex; flex-direction:column; padding:20px 0;
+  }
+  .tabs .brand{
+    font-family:var(--serif); font-size:14px; font-style:italic; color:var(--ink-dim);
+    padding:0 18px 18px; border-bottom:1px solid var(--line); margin-bottom:6px;
+  }
+  .tab{
+    text-align:left; background:none; border:none; cursor:pointer;
+    padding:12px 18px; display:flex; gap:10px; align-items:baseline;
+    font-family:var(--mono); font-size:11.5px; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--ink-faint); border-left:3px solid transparent;
+  }
+  .tab .idx{ color:var(--ink-faint); }
+  .tab.active{ background:var(--card); color:var(--accent); border-left-color:var(--accent); }
+  .tab.active .idx{ color:var(--accent); }
+  .tab:hover:not(.active){ color:var(--ink); }
+
+  .sheet{
+    position:relative; flex:1; background:var(--card); border:1px solid var(--line);
+  }
+  .slide{ position:absolute; inset:0; display:none; flex-direction:column; padding:56px 64px; }
+  .slide.active{ display:flex; }
+
+  .stamp{
+    position:absolute; top:46px; right:56px;
+    font-family:var(--mono); font-size:11px; letter-spacing:0.14em; color:var(--accent);
+    border:1px solid var(--accent); padding:5px 10px; transform:rotate(3deg);
+    text-transform:uppercase;
+  }
+
+  .num{ font-family:var(--serif); font-size:15px; color:var(--ink-faint); margin:0 0 4px; font-style:italic; }
+  h1{
+    font-family:var(--serif); font-weight:700; font-size:clamp(30px,4.2vw,50px);
+    line-height:1.1; margin:0 0 16px; text-wrap:balance; max-width:680px;
+  }
+  h2{
+    font-family:var(--serif); font-weight:700; font-size:clamp(24px,3.2vw,34px);
+    line-height:1.15; margin:0 0 20px; text-wrap:balance; max-width:640px;
+  }
+  .lede{ font-size:17px; line-height:1.65; color:var(--ink-dim); max-width:580px; margin:0 0 4px; }
+  .content{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:24px; min-height:0; max-width:680px; }
+
+  .entries{ list-style:none; margin:0; padding:0; display:grid; gap:0; }
+  .entries li{
+    display:grid; grid-template-columns:74px 1fr; gap:16px;
+    padding:14px 0; border-top:1px solid var(--line);
+  }
+  .entries li:last-child{ border-bottom:1px solid var(--line); }
+  .entries .tag{ font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:0.05em; padding-top:2px; }
+  .entries p{ margin:0; font-size:15.5px; line-height:1.55; }
+
+  .note{
+    font-family:var(--serif); font-style:italic; font-size:16px; color:var(--accent);
+    border-left:2px solid var(--accent); padding:8px 16px; max-width:560px;
+  }
+
+  pre{
+    font-family:var(--mono); font-size:14px; line-height:1.65;
+    background:#232019; color:#efe9dd;
+    padding:20px 24px; margin:0; overflow:auto;
+  }
+  .kw{ color:#e6b98f; } .fn{ color:#d9c07a; } .str{ color:#b8cfa0; } .cm{ color:#8f897a; }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .file-label{ font-family:var(--mono); font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; margin:0 0 8px; }
+
+  .findings{ display:grid; gap:18px; }
+  .findings .f{ display:grid; grid-template-columns:28px 1fr; gap:14px; }
+  .findings .mark{ font-family:var(--serif); font-style:italic; color:var(--accent); font-size:18px; }
+  .findings p{ margin:0; font-size:16.5px; line-height:1.55; }
+
+  .foot{ margin-top:auto; padding-top:16px; border-top:1px solid var(--line); font-family:var(--mono); font-size:12.5px; color:var(--ink-faint); }
+
+  .nav{ display:flex; align-items:center; justify-content:center; gap:16px; margin-top:20px; }
+  .arrow-btn{
+    font-family:var(--sans); background:var(--card); border:1px solid var(--line); color:var(--ink-dim);
+    width:32px; height:32px; cursor:pointer; font-size:14px;
+  }
+  .arrow-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .counter{ font-family:var(--mono); font-size:12px; color:var(--ink-faint); min-width:56px; text-align:center; }
+
+  .title-slide h1{ font-size:clamp(38px,5.4vw,58px); }
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="binder">
+    <div class="tabs" id="tabs">
+      <div class="brand">Field Notes / v1.0.3</div>
+    </div>
+    <div class="sheet" id="sheet">
+
+      <section class="slide active title-slide" data-title="Cover">
+        <p class="num">Async Actions — Minimal Code</p>
+        <h1>A short walkthrough of the middleware that removes the boilerplate.</h1>
+        <p class="lede">One Redux middleware replaces the code written around every async call — action types, dispatch calls, and reducer wiring.</p>
+        <div class="foot">redux-minimal-code-async-actions · v1.0.3</div>
+      </section>
+
+      <section class="slide" data-title="Problem">
+        <span class="stamp">Problem</span>
+        <p class="num">Entry 02</p>
+        <h2>The boilerplate tax</h2>
+        <div class="content" style="justify-content:flex-start;">
+          <p class="lede">Every async call in Redux traditionally needs three action types, three creators, and the code to dispatch them by hand.</p>
+          <ul class="entries">
+            <li><span class="tag">IN&nbsp;PROGRESS</span><p>Action type + creator, fired before the call</p></li>
+            <li><span class="tag">SUCCESS</span><p>Action type + creator + reducer case, fired on resolve</p></li>
+            <li><span class="tag">ERROR</span><p>Action type + creator + reducer case, fired on reject</p></li>
+          </ul>
+          <p class="note">N async calls × 3 states = 3N pieces of repeated code.</p>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Approach">
+        <span class="stamp">Approach</span>
+        <p class="num">Entry 03</p>
+        <h2>One middleware, one flag</h2>
+        <div class="content" style="justify-content:flex-start;">
+          <p class="lede">Add <em style="color:var(--accent); font-style:normal; font-family:var(--mono);">async: true</em> to any action. The middleware takes it from there — no sagas, no thunks.</p>
+          <pre><span class="kw">const</span> getUser = {
+    type: <span class="str">'GET_USER'</span>,
+    async: <span class="kw">true</span>,
+    httpMethodToInvoke: api.fetchUser,
+    params: [userId]
+};</pre>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Mechanism">
+        <span class="stamp">Mechanism</span>
+        <p class="num">Entry 04</p>
+        <h2>What the middleware does</h2>
+        <div class="content" style="justify-content:flex-start;">
+          <ul class="entries">
+            <li><span class="tag">01</span><p>Detects <em style="font-style:normal; font-family:var(--mono); color:var(--accent);">async: true</em> on the action</p></li>
+            <li><span class="tag">02</span><p>Dispatches <em style="font-style:normal; font-family:var(--mono); color:var(--accent);">TYPE_IN_PROGRESS</em></p></li>
+            <li><span class="tag">03</span><p>Calls <em style="font-style:normal; font-family:var(--mono); color:var(--accent);">httpMethodToInvoke(...params)</em></p></li>
+            <li><span class="tag">04</span><p>Dispatches <em style="font-style:normal; font-family:var(--mono); color:var(--accent);">_SUCCESS</em> or <em style="font-style:normal; font-family:var(--mono); color:var(--accent);">_ERROR</em></p></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide" data-title="The Code">
+        <span class="stamp">Source</span>
+        <p class="num">Entry 05</p>
+        <h2>The middleware, in full</h2>
+        <div class="content">
+          <p class="file-label">redux_async_middleware.js</p>
+          <pre><span class="kw">const</span> asyncActionsMiddleware = store => next => action => {
+    <span class="kw">if</span> (!action.hasOwnProperty(<span class="str">'async'</span>)) <span class="kw">return</span> next(action);
+
+    <span class="kw">const</span> { httpMethodToInvoke, params, type } = action;
+    <span class="kw">const</span> inProgressType = <span class="str">`${type}_IN_PROGRESS`</span>;
+
+    store.dispatch({ type: inProgressType });
+
+    httpMethodToInvoke(...params)
+        .then(result => store.dispatch({
+            type: <span class="str">`${type}_SUCCESS`</span>, ...result
+        }))
+        .catch(err => store.dispatch({
+            type: <span class="str">`${type}_ERROR`</span>, err
+        }));
+
+    <span class="kw">return</span> next(action);
+};</pre>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Usage">
+        <span class="stamp">Usage</span>
+        <p class="num">Entry 06</p>
+        <h2>Wiring it up</h2>
+        <div class="content">
+          <div class="grid-2">
+            <div>
+              <p class="file-label">action.js</p>
+              <pre><span class="kw">const</span> getUser = {
+    type: <span class="str">'GET_USER'</span>,
+    async: <span class="kw">true</span>,
+    httpMethodToInvoke: api.fetchUser,
+    params: [userId]
+};</pre>
+            </div>
+            <div>
+              <p class="file-label">reducer.js</p>
+              <pre><span class="kw">case</span> generateSuccessActionTypeName(
+    <span class="str">'GET_USER'</span>
+): {
+    <span class="kw">return</span> { ...state, user: action.user };
+}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Takeaways">
+        <span class="stamp">Summary</span>
+        <p class="num">Entry 07</p>
+        <h2>Why it's worth it</h2>
+        <div class="content">
+          <div class="findings">
+            <div class="f"><span class="mark">i.</span><p>Drop-in middleware — no sagas or thunks to learn.</p></div>
+            <div class="f"><span class="mark">ii.</span><p>Every async call collapses to a single action object.</p></div>
+            <div class="f"><span class="mark">iii.</span><p>The resolved payload spreads straight into the SUCCESS action.</p></div>
+          </div>
+          <div class="foot">npm i redux-minimal-code-async-actions</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+  <div class="nav">
+    <button class="arrow-btn" id="prev" aria-label="Previous">←</button>
+    <span class="counter" id="counter">01 / 07</span>
+    <button class="arrow-btn" id="next" aria-label="Next">→</button>
+  </div>
+</div>
+<script>
+(function(){
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  var tabsWrap = document.getElementById('tabs');
+  var counter = document.getElementById('counter');
+  slides.forEach(function(s, n){
+    var b = document.createElement('button');
+    b.className = 'tab';
+    b.innerHTML = '<span class="idx">' + String(n+1).padStart(2,'0') + '</span><span>' + s.getAttribute('data-title') + '</span>';
+    b.addEventListener('click', function(){ show(n); });
+    tabsWrap.appendChild(b);
+  });
+  var tabs = document.querySelectorAll('.tab');
+  function show(i){
+    idx = Math.max(0, Math.min(total-1, i));
+    slides.forEach(function(s,n){ s.classList.toggle('active', n===idx); });
+    tabs.forEach(function(t,n){ t.classList.toggle('active', n===idx); });
+    counter.textContent = String(idx+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  }
+  document.addEventListener('keydown', function(e){
+    if (['ArrowRight','ArrowDown','PageDown',' '].indexOf(e.key) !== -1){ e.preventDefault(); show(idx+1); }
+    if (['ArrowLeft','ArrowUp','PageUp'].indexOf(e.key) !== -1){ e.preventDefault(); show(idx-1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(total-1);
+  });
+  document.getElementById('next').addEventListener('click', function(){ show(idx+1); });
+  document.getElementById('prev').addEventListener('click', function(){ show(idx-1); });
+  show(0);
+})();
+</script>
+</body>
+</html>

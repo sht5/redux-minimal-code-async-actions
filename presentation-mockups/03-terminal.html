@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Async Actions, Minimal Code — Terminal</title>
+<style>
+  :root{
+    --bg: #0c0d0a;
+    --panel: #15170f;
+    --chrome: #1c1e15;
+    --ink: #dcdccb;
+    --ink-dim: #8b8c78;
+    --ink-faint: #5c5d4e;
+    --accent: #ffb000;
+    --accent-dim: #7a5600;
+    --ok: #8fd14f;
+    --err: #ff6b5e;
+    --blue: #7ec8e3;
+    --line: rgba(220,220,203,0.12);
+    --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--mono); overflow:hidden;
+  }
+  .deck{ width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+  .window{
+    width:min(1100px, 92vw); height:min(680px, 86vh);
+    background:var(--panel);
+    border:1px solid var(--line);
+    box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+    display:flex; flex-direction:column;
+    border-radius:10px; overflow:hidden;
+  }
+  .titlebar{
+    background:var(--chrome); height:38px; flex:none;
+    display:flex; align-items:center; padding:0 14px; gap:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .dot3{ width:11px; height:11px; border-radius:50%; }
+  .dot3.r{ background:#ff5f56; } .dot3.y{ background:#ffbd2e; } .dot3.g{ background:#27c93f; }
+  .titlebar .path{ margin:0 auto; transform:translateX(-16px); font-size:12.5px; color:var(--ink-faint); }
+
+  .screen{ position:relative; flex:1; min-height:0; }
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    padding:40px 56px 60px;
+  }
+  .slide.active{ display:flex; }
+
+  .prompt{
+    font-size:13px; color:var(--ink-faint); margin:0 0 22px;
+    display:flex; gap:8px; align-items:baseline;
+  }
+  .prompt .sym{ color:var(--ok); }
+  .prompt .path{ color:var(--blue); }
+  .prompt .cmd{ color:var(--ink); }
+
+  h1{
+    font-size:clamp(26px, 4vw, 42px); line-height:1.2; margin:0 0 14px; font-weight:600;
+    color:var(--ink); text-wrap:balance;
+  }
+  h1 .amp{ color:var(--accent); }
+  h2{
+    font-size:20px; margin:0 0 22px; color:var(--accent); font-weight:600;
+  }
+  h2::before{ content:"# "; color:var(--ink-faint); }
+  .lede{ font-size:15.5px; line-height:1.7; color:var(--ink-dim); max-width:640px; margin:0 0 10px; }
+  .content{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:22px; min-height:0; }
+
+  .log{ list-style:none; margin:0; padding:0; display:grid; gap:10px; max-width:680px; }
+  .log li{ font-size:14.5px; line-height:1.6; color:var(--ink); display:flex; gap:12px; }
+  .log li .tag{ flex:none; color:var(--accent); }
+  .log li.ok .tag{ color:var(--ok); }
+  .log li.err .tag{ color:var(--err); }
+
+  .callout{
+    display:inline-block; font-size:13.5px; color:var(--accent);
+    border:1px solid var(--accent-dim); background:rgba(255,176,0,0.06);
+    padding:10px 16px; max-width:640px;
+  }
+  .callout::before{ content:"// "; color:var(--accent-dim); }
+
+  pre{
+    font-size:14px; line-height:1.65; background:#0a0b07;
+    border:1px solid var(--line); padding:20px 22px; margin:0; overflow:auto;
+    color:var(--ink);
+  }
+  .kw{ color:var(--blue); } .fn{ color:var(--accent); } .str{ color:var(--ok); } .cm{ color:var(--ink-faint); }
+
+  .steps{ display:grid; gap:0; max-width:640px; }
+  .steps .s{ display:flex; gap:14px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .steps .s:last-child{ border-bottom:none; }
+  .steps .idx{ color:var(--ink-faint); }
+  .steps .arrow{ color:var(--accent); }
+  .steps p{ margin:0; font-size:14.5px; color:var(--ink); }
+  .steps code{ color:var(--accent); }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .file-label{ font-size:12px; color:var(--ink-faint); margin:0 0 8px; }
+  .file-label::before{ content:"$ cat "; color:var(--ink-faint); }
+
+  .cursor{ display:inline-block; width:9px; height:18px; background:var(--accent); vertical-align:-3px; animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+  @media (prefers-reduced-motion: reduce){ .cursor{ animation:none; } }
+
+  .statusbar{
+    flex:none; height:30px; background:var(--chrome); border-top:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; padding:0 16px;
+    font-size:11.5px; color:var(--ink-faint);
+  }
+  .statusbar .ok-pill{ color:var(--ok); }
+
+  .nav{ display:flex; align-items:center; justify-content:center; gap:16px; margin-top:20px; }
+  .dots{ display:flex; gap:7px; }
+  .dot-nav{ width:6px; height:6px; background:var(--ink-faint); opacity:0.5; cursor:pointer; }
+  .dot-nav.active{ background:var(--accent); opacity:1; }
+  .arrow-btn{
+    font-family:var(--mono); background:var(--panel); border:1px solid var(--line); color:var(--ink-dim);
+    width:30px; height:30px; cursor:pointer; font-size:13px; border-radius:4px;
+  }
+  .arrow-btn:hover{ border-color:var(--accent); color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="window">
+    <div class="titlebar">
+      <span class="dot3 r"></span><span class="dot3 y"></span><span class="dot3 g"></span>
+      <span class="path">~/redux-minimal-code-async-actions — deck.sh</span>
+    </div>
+    <div class="screen">
+
+      <section class="slide active">
+        <p class="prompt"><span class="sym">➜</span> <span class="path">~/deck</span> <span class="cmd">./run --slide title</span></p>
+        <h1>Async actions, minimal code<span class="amp">_</span><span class="cursor"></span></h1>
+        <p class="lede">One Redux middleware replaces the boilerplate written around every async call — action types, dispatch calls, and reducer wiring.</p>
+        <div class="content" style="justify-content:flex-end;">
+          <p class="lede" style="color:var(--ink-faint); font-size:13px;">redux-minimal-code-async-actions · v1.0.3</p>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="prompt"><span class="sym">➜</span> <span class="path">~/deck</span> <span class="cmd">./run --slide problem</span></p>
+        <h2>the boilerplate tax</h2>
+        <div class="content" style="justify-content:flex-start;">
+          <p class="lede">Every async call in Redux traditionally needs three action types, three creators, and the code to dispatch them by hand.</p>
+          <ul class="log">
+            <li><span class="tag">[01]</span> IN_PROGRESS — action type + creator, fired before the call</li>
+            <li><span class="tag">[02]</span> SUCCESS — action type + creator + reducer case, fired on resolve</li>
+            <li><span class="tag">[03]</span> ERROR — action type + creator + reducer case, fired on reject</li>
+          </ul>
+          <div class="callout">N async calls × 3 states = 3N pieces of repeated code</div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="prompt"><span class="sym">➜</span> <span class="path">~/deck</span> <span class="cmd">./run --slide approach</span></p>
+        <h2>one middleware, one flag</h2>
+        <div class="content" style="justify-content:flex-start;">
+          <p class="lede">Add <code style="color:var(--accent);">async: true</code> to any action. The middleware takes it from there — no sagas, no thunks.</p>
+          <pre><span class="kw">const</span> getUser = {
+    type: <span class="str">'GET_USER'</span>,
+    async: <span class="kw">true</span>,
+    httpMethodToInvoke: api.fetchUser,
+    params: [userId]
+};</pre>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="prompt"><span class="sym">➜</span> <span class="path">~/deck</span> <span class="cmd">./run --slide mechanism</span></p>
+        <h2>what the middleware does</h2>
+        <div class="content" style="justify-content:flex-start;">
+          <div class="steps">
+            <div class="s"><span class="idx">01</span><span class="arrow">→</span><p>detects <code>async: true</code> on the action</p></div>
+            <div class="s"><span class="idx">02</span><span class="arrow">→</span><p>dispatches <code>TYPE_IN_PROGRESS</code></p></div>
+            <div class="s"><span class="idx">03</span><span class="arrow">→</span><p>calls <code>httpMethodToInvoke(...params)</code></p></div>
+            <div class="s"><span class="idx">04</span><span class="arrow">→</span><p>dispatches <code>_SUCCESS</code> or <code>_ERROR</code></p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="prompt"><span class="sym">➜</span> <span class="path">~/deck</span> <span class="cmd">./run --slide code</span></p>
+        <p class="file-label">redux_async_middleware.js</p>
+        <div class="content">
+          <pre><span class="kw">const</span> asyncActionsMiddleware = store => next => action => {
+    <span class="kw">if</span> (!action.hasOwnProperty(<span class="str">'async'</span>)) <span class="kw">return</span> next(action);
+
+    <span class="kw">const</span> { httpMethodToInvoke, params, type } = action;
+    <span class="kw">const</span> inProgressType = <span class="str">`${type}_IN_PROGRESS`</span>;
+
+    store.dispatch({ type: inProgressType });
+
+    httpMethodToInvoke(...params)
+        .then(result => store.dispatch({
+            type: <span class="str">`${type}_SUCCESS`</span>, ...result
+        }))
+        .catch(err => store.dispatch({
+            type: <span class="str">`${type}_ERROR`</span>, err
+        }));
+
+    <span class="kw">return</span> next(action);
+};</pre>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="prompt"><span class="sym">➜</span> <span class="path">~/deck</span> <span class="cmd">./run --slide usage</span></p>
+        <h2>wiring it up</h2>
+        <div class="content">
+          <div class="grid-2">
+            <div>
+              <p class="file-label">action.js</p>
+              <pre><span class="kw">const</span> getUser = {
+    type: <span class="str">'GET_USER'</span>,
+    async: <span class="kw">true</span>,
+    httpMethodToInvoke: api.fetchUser,
+    params: [userId]
+};</pre>
+            </div>
+            <div>
+              <p class="file-label">reducer.js</p>
+              <pre><span class="kw">case</span> generateSuccessActionTypeName(
+    <span class="str">'GET_USER'</span>
+): {
+    <span class="kw">return</span> { ...state, user: action.user };
+}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="prompt"><span class="sym">➜</span> <span class="path">~/deck</span> <span class="cmd">./run --slide takeaways</span></p>
+        <h2>why it's worth it</h2>
+        <div class="content">
+          <ul class="log">
+            <li class="ok"><span class="tag">✓</span> drop-in middleware — no sagas or thunks to learn</li>
+            <li class="ok"><span class="tag">✓</span> every async call collapses to a single action object</li>
+            <li class="ok"><span class="tag">✓</span> the resolved payload spreads straight into the SUCCESS action</li>
+          </ul>
+          <div class="callout">npm i redux-minimal-code-async-actions</div>
+        </div>
+      </section>
+
+    </div>
+    <div class="statusbar">
+      <span><span class="ok-pill">●</span> connected</span>
+      <span id="counter">01 / 07</span>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="arrow-btn" id="prev" aria-label="Previous">&lt;</button>
+    <div class="dots"></div>
+    <button class="arrow-btn" id="next" aria-label="Next">&gt;</button>
+  </div>
+</div>
+<script>
+(function(){
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  var dotsWrap = document.querySelector('.dots');
+  var counter = document.getElementById('counter');
+  for (var i=0;i<total;i++){
+    var d = document.createElement('div');
+    d.className = 'dot-nav';
+    d.addEventListener('click', (function(n){ return function(){ show(n); }; })(i));
+    dotsWrap.appendChild(d);
+  }
+  var dots = document.querySelectorAll('.dot-nav');
+  function show(i){
+    idx = Math.max(0, Math.min(total-1, i));
+    slides.forEach(function(s,n){ s.classList.toggle('active', n===idx); });
+    dots.forEach(function(d,n){ d.classList.toggle('active', n===idx); });
+    counter.textContent = String(idx+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  }
+  document.addEventListener('keydown', function(e){
+    if (['ArrowRight','ArrowDown','PageDown',' '].indexOf(e.key) !== -1){ e.preventDefault(); show(idx+1); }
+    if (['ArrowLeft','ArrowUp','PageUp'].indexOf(e.key) !== -1){ e.preventDefault(); show(idx-1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(total-1);
+  });
+  document.getElementById('next').addEventListener('click', function(){ show(idx+1); });
+  document.getElementById('prev').addEventListener('click', function(){ show(idx-1); });
+  show(0);
+})();
+</script>
+</body>
+</html>
