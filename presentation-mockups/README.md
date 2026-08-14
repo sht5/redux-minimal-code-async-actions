@@ -149,3 +149,14 @@ this is "if you remember nothing else."
 - Is a **Table** type needed for genuinely tabular data (3+ dimensions), or
   does Compare/List cover everything in practice?
 - Are the caps right — List 3–5, Takeaways ≤3 — or too tight/loose?
+
+## The skill
+
+The mockup phase is done — the actual skill lives at
+[`.claude/skills/html-deck/`](../.claude/skills/html-deck/). It locks in
+the terminal look (`assets/deck-base.html`), the ten slide-type templates
+with their constraints (`references/slide-types.md`), and a two-phase
+workflow: propose a slide-by-slide outline for approval, then build the
+HTML only after sign-off. `06-skill-demo.html` in this folder is a sample
+deck assembled purely from the skill's templates, for comparison against
+the hand-built `05-terminal-catalog.html`.
