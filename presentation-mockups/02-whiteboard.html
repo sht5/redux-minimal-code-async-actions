@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Async Actions, Minimal Code — Whiteboard</title>
+<style>
+  :root{
+    --bg: #f5f4f0;
+    --panel: #fbfaf8;
+    --ink: #18160f;
+    --ink-dim: #6b6459;
+    --ink-faint: #a49c8d;
+    --accent: #1c4dff;
+    --accent-soft: #e6ebff;
+    --ok: #1f8a52;
+    --err: #c23b28;
+    --line: #ded9cf;
+    --sans: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); overflow:hidden;
+  }
+  .deck{ width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+  .sheet{
+    position:relative;
+    width:min(1180px, 92vw); height:min(700px, 86vh);
+    background:var(--panel);
+    border:1px solid var(--line);
+    box-shadow: 0 30px 70px rgba(24,22,15,0.10);
+  }
+  .slide{ position:absolute; inset:0; display:none; padding:76px 88px; flex-direction:column; }
+  .slide.active{ display:flex; }
+
+  .watermark{
+    position:absolute; right:36px; bottom:8px;
+    font-size:220px; font-weight:800; line-height:1;
+    color:var(--ink); opacity:0.035;
+    font-family:var(--sans); letter-spacing:-0.05em;
+    pointer-events:none; user-select:none;
+  }
+
+  .kicker{
+    font-size:13px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 20px;
+  }
+  h1{
+    font-size:clamp(32px, 4.6vw, 54px); line-height:1.06; letter-spacing:-0.02em;
+    margin:0 0 8px; font-weight:700; text-wrap:balance; max-width:820px;
+  }
+  .rule{ width:56px; height:4px; background:var(--accent); margin:18px 0 26px; border-radius:2px; }
+  h2{
+    font-size:clamp(26px, 3.4vw, 38px); line-height:1.15; font-weight:700;
+    letter-spacing:-0.015em; margin:0 0 8px; text-wrap:balance; max-width:760px;
+  }
+  .lede{ font-size:19px; line-height:1.6; color:var(--ink-dim); max-width:600px; margin:0 0 30px; }
+  .content{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:24px; min-height:0; max-width:800px; }
+
+  ol.steps{ list-style:none; margin:0; padding:0; display:grid; gap:0; }
+  ol.steps li{
+    display:grid; grid-template-columns:44px 1fr; gap:18px; align-items:start;
+    padding:16px 0; border-bottom:1px solid var(--line);
+  }
+  ol.steps li:first-child{ padding-top:0; }
+  ol.steps li:last-child{ border-bottom:none; }
+  ol.steps .num{ font-size:15px; font-weight:700; color:var(--accent); }
+  ol.steps p{ margin:0; font-size:17px; line-height:1.5; }
+  ol.steps code{ background:var(--accent-soft); color:var(--accent); padding:1px 6px; border-radius:4px; font-family:var(--mono); font-size:0.9em; }
+
+  .callout{
+    display:inline-block; font-size:15px; font-weight:600; color:var(--ink);
+    background:var(--accent-soft); border-left:3px solid var(--accent);
+    padding:12px 18px; max-width:560px;
+  }
+
+  pre{
+    font-family:var(--mono); font-size:15px; line-height:1.65;
+    background:#100f0b; color:#eae7de;
+    padding:22px 26px; margin:0; overflow:auto; border-radius:6px;
+  }
+  .kw{ color:#8fb2ff; } .fn{ color:#e9c46a; } .str{ color:#9fd6ac; } .cm{ color:#8a8578; }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .card-label{ font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 10px; }
+
+  .points{ display:grid; gap:20px; }
+  .points .p{ display:flex; gap:16px; align-items:flex-start; }
+  .points .dot{ width:10px; height:10px; border-radius:50%; background:var(--accent); margin-top:7px; flex:none; }
+  .points p{ margin:0; font-size:18px; line-height:1.55; font-weight:500; }
+
+  .footline{ margin-top:auto; padding-top:20px; font-family:var(--mono); font-size:13px; color:var(--ink-faint); border-top:1px solid var(--line); }
+
+  .bottom-bar{
+    position:absolute; left:88px; right:88px; bottom:32px;
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; color:var(--ink-faint); letter-spacing:0.03em;
+  }
+
+  .nav{ display:flex; align-items:center; justify-content:center; gap:16px; margin-top:22px; }
+  .dots{ display:flex; gap:8px; }
+  .dot-nav{ width:8px; height:8px; border-radius:50%; background:var(--ink-faint); opacity:0.5; cursor:pointer; }
+  .dot-nav.active{ background:var(--accent); opacity:1; }
+  .arrow{
+    font-family:var(--sans); background:var(--panel); border:1px solid var(--line); color:var(--ink);
+    width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:15px;
+  }
+  .arrow:hover{ border-color:var(--accent); color:var(--accent); }
+  .counter{ font-family:var(--mono); font-size:12px; color:var(--ink-faint); min-width:56px; text-align:center; }
+
+  .title-slide h1{ font-size:clamp(40px,5.6vw,66px); }
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="sheet">
+
+    <section class="slide active title-slide">
+      <div class="watermark">01</div>
+      <p class="kicker">Mechanism walkthrough</p>
+      <h1>Async actions,<br />minimal code.</h1>
+      <div class="rule"></div>
+      <p class="lede">One Redux middleware replaces the boilerplate written around every async call — action types, dispatch calls, and reducer wiring.</p>
+      <div class="footline">redux-minimal-code-async-actions · v1.0.3</div>
+    </section>
+
+    <section class="slide">
+      <div class="watermark">02</div>
+      <p class="kicker">The problem</p>
+      <h2>The boilerplate tax</h2>
+      <p class="lede">Every async call in Redux traditionally needs three action types, three creators, and the code to dispatch them by hand.</p>
+      <div class="content" style="justify-content:flex-start;">
+        <ol class="steps">
+          <li><span class="num">01</span><p>In progress — action type + creator, fired before the call</p></li>
+          <li><span class="num">02</span><p>Success — action type + creator + reducer case, fired on resolve</p></li>
+          <li><span class="num">03</span><p>Error — action type + creator + reducer case, fired on reject</p></li>
+        </ol>
+        <div class="callout">N async calls × 3 states = 3N pieces of repeated code</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="watermark">03</div>
+      <p class="kicker">The approach</p>
+      <h2>One middleware, one flag</h2>
+      <div class="content" style="justify-content:flex-start;">
+        <p class="lede" style="margin-bottom:0;">Add <code style="background:var(--accent-soft); color:var(--accent); padding:2px 8px; border-radius:4px; font-family:var(--mono);">async: true</code> to any action. The middleware takes it from there — no sagas, no thunks.</p>
+        <pre><span class="kw">const</span> getUser = {
+    type: <span class="str">'GET_USER'</span>,
+    async: <span class="kw">true</span>,
+    httpMethodToInvoke: api.fetchUser,
+    params: [userId]
+};</pre>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="watermark">04</div>
+      <p class="kicker">The mechanism</p>
+      <h2>What the middleware does</h2>
+      <div class="content" style="justify-content:flex-start;">
+        <ol class="steps">
+          <li><span class="num">01</span><p>Detects <code>async: true</code> on the action</p></li>
+          <li><span class="num">02</span><p>Dispatches <code>TYPE_IN_PROGRESS</code></p></li>
+          <li><span class="num">03</span><p>Calls <code>httpMethodToInvoke(...params)</code></p></li>
+          <li><span class="num">04</span><p>Dispatches <code>_SUCCESS</code> with the result, or <code>_ERROR</code></p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="watermark">05</div>
+      <p class="kicker">The code</p>
+      <h2>The middleware, in full</h2>
+      <div class="content">
+        <pre><span class="kw">const</span> asyncActionsMiddleware = store => next => action => {
+    <span class="kw">if</span> (!action.hasOwnProperty(<span class="str">'async'</span>)) <span class="kw">return</span> next(action);
+
+    <span class="kw">const</span> { httpMethodToInvoke, params, type } = action;
+    <span class="kw">const</span> inProgressType = <span class="str">`${type}_IN_PROGRESS`</span>;
+
+    store.dispatch({ type: inProgressType });
+
+    httpMethodToInvoke(...params)
+        .then(result => store.dispatch({
+            type: <span class="str">`${type}_SUCCESS`</span>, ...result
+        }))
+        .catch(err => store.dispatch({
+            type: <span class="str">`${type}_ERROR`</span>, err
+        }));
+
+    <span class="kw">return</span> next(action);
+};</pre>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="watermark">06</div>
+      <p class="kicker">Usage</p>
+      <h2>Wiring it up</h2>
+      <div class="content">
+        <div class="grid-2">
+          <div>
+            <p class="card-label">Define the action</p>
+            <pre><span class="kw">const</span> getUser = {
+    type: <span class="str">'GET_USER'</span>,
+    async: <span class="kw">true</span>,
+    httpMethodToInvoke: api.fetchUser,
+    params: [userId]
+};</pre>
+          </div>
+          <div>
+            <p class="card-label">Reduce the success type</p>
+            <pre><span class="kw">case</span> generateSuccessActionTypeName(
+    <span class="str">'GET_USER'</span>
+): {
+    <span class="kw">return</span> { ...state, user: action.user };
+}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="watermark">07</div>
+      <p class="kicker">Takeaways</p>
+      <h2>Why it's worth it</h2>
+      <div class="content">
+        <div class="points">
+          <div class="p"><span class="dot"></span><p>Drop-in middleware — no sagas or thunks to learn.</p></div>
+          <div class="p"><span class="dot"></span><p>Every async call collapses to a single action object.</p></div>
+          <div class="p"><span class="dot"></span><p>The resolved payload spreads straight into the SUCCESS action.</p></div>
+        </div>
+        <div class="footline">npm i redux-minimal-code-async-actions</div>
+      </div>
+    </section>
+
+    <div class="bottom-bar">
+      <span>Async Actions — Minimal Code</span>
+      <span id="counter">01 / 07</span>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="arrow" id="prev" aria-label="Previous">‹</button>
+    <div class="dots"></div>
+    <button class="arrow" id="next" aria-label="Next">›</button>
+  </div>
+</div>
+<script>
+(function(){
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  var dotsWrap = document.querySelector('.dots');
+  var counter = document.getElementById('counter');
+  for (var i=0;i<total;i++){
+    var d = document.createElement('div');
+    d.className = 'dot-nav';
+    d.addEventListener('click', (function(n){ return function(){ show(n); }; })(i));
+    dotsWrap.appendChild(d);
+  }
+  var dots = document.querySelectorAll('.dot-nav');
+  function show(i){
+    idx = Math.max(0, Math.min(total-1, i));
+    slides.forEach(function(s,n){ s.classList.toggle('active', n===idx); });
+    dots.forEach(function(d,n){ d.classList.toggle('active', n===idx); });
+    counter.textContent = String(idx+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  }
+  document.addEventListener('keydown', function(e){
+    if (['ArrowRight','ArrowDown','PageDown',' '].indexOf(e.key) !== -1){ e.preventDefault(); show(idx+1); }
+    if (['ArrowLeft','ArrowUp','PageUp'].indexOf(e.key) !== -1){ e.preventDefault(); show(idx-1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(total-1);
+  });
+  document.getElementById('next').addEventListener('click', function(){ show(idx+1); });
+  document.getElementById('prev').addEventListener('click', function(){ show(idx-1); });
+  show(0);
+})();
+</script>
+</body>
+</html>
