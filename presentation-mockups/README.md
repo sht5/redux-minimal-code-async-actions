@@ -153,7 +153,7 @@ this is "if you remember nothing else."
 ## The skill
 
 The mockup phase is done — the actual skill lives at
-[`.claude/skills/html-deck/`](../.claude/skills/html-deck/). It locks in
+[`skills/html-deck/`](../skills/html-deck/). It locks in
 the terminal look (`assets/deck-base.html`), the ten slide-type templates
 with their constraints (`references/slide-types.md`), and a two-phase
 workflow: propose a slide-by-slide outline for approval, then build the
