@@ -70,35 +70,82 @@ further per feedback:
   Pick one style (or ask for a fourth) and it becomes *the* flowchart
   template — the skill should not improvise new diagram styles per deck.
 
+### Decisions so far
+- **Flowchart style: node graph (SVG, color-coded outcomes).** The
+  schematic and ASCII-tree variants stay in `05-terminal-catalog.html` for
+  reference but the node graph is what the skill will standardize on.
+
 ### The slide-type catalog
 
 The core ask this round: stop treating every slide as a one-off layout.
-This deck now demonstrates one concrete, reusable type per slide — the
-skill should only ever pick from this list, never invent a new layout on
-the fly. Each slide is tagged top-right (`TYPE · …`) and its terminal
-prompt doubles as a mnemonic for the type:
+This deck demonstrates one concrete, reusable type per slide — the skill
+should only ever pick from this list, never invent a new layout on the
+fly. Each slide is tagged top-right (`TYPE · …`) and its terminal prompt
+doubles as a mnemonic for the type. Flowchart appears three times in the
+file (once per style variant, before the decision above) — in the real
+deck it's one slide. That's 10 types across 12 slides.
 
-| # | Type | Prompt idiom | When to use it |
-|---|------|---------------|-----------------|
-| 1 | **Title** | `./run` | Deck opener — name + one-line premise. |
-| 2 | **Section** | `cd ./01-problem` | Chapter break in a longer deck. Almost empty on purpose. |
-| 3 | **Statement** | `echo $THESIS` | One big idea, no bullets — a hook or a hard claim. |
-| 4 | **List** | `ls -la ./boilerplate` | Enumerated points — problem framing, context, constraints. |
-| 5 | **Steps** | `./trace --mechanism` | A sequential process, in order. |
-| 6 | **Flowchart** | `./render flow.svg …` | Branching logic — decisions, not just a sequence. |
-| 7 | **Code** | `cat file.js` | One annotated code block. |
-| 8 | **Compare** | `diff before.js after.js` | Two options or a before/after, side by side. |
-| 9 | **Metric** | `./stats --summary` | One big number that proves the point. |
-| 10 | **Takeaways** | `cat TAKEAWAYS.md` | Closing checklist — always the last slide. |
+**1. Title** — *opens the deck, once.*
+Slots: headline (3–8 words), one-line premise (≤20 words), optional meta
+line (repo/version/date).
+Rule: always slide 1, exactly one per deck. No bullets, no code.
 
-Flowchart appears three times in this file (once per style variant) —
-in the real deck it's one slide, using whichever variant gets picked.
-That makes 10 types across 12 slides.
+**2. Section** — *chapter break.*
+Slots: short label, optional one-line subtext.
+Rule: near-empty by design. Use only when the deck has genuinely distinct
+parts (e.g. Why → What → How → Rollout) — not as decoration between every
+pair of slides, and not in a short single-narrative deck. The catalog
+deck's async-actions content is one continuous story, so it doesn't
+actually need one; slide 2 exists purely to demonstrate the type.
+
+**3. Statement** — *one idea, full weight.*
+Slots: a single sentence (~12–20 words). No heading, no body.
+Rule: if it needs a second sentence, it isn't a Statement — it's a List or
+a Title lede.
+
+**4. List** — *parallel, unordered points.*
+Slots: heading, optional one-line lede, 3–5 items, optional callout.
+Rule: 3–5 items max. Order doesn't matter — if it does, use Steps. More
+than 5 means split into two List slides.
+
+**5. Steps** — *sequential process.*
+Slots: heading, 3–5 numbered steps, each a short phrase (often with inline
+code).
+Rule: only for things that truly happen in order. If reordering wouldn't
+change the meaning, it's a List, not Steps.
+
+**6. Flowchart** — *branching logic.* (node-graph style, decided)
+Slots: optional heading, one diagram.
+Rule: only when there's a real decision point (if/else, success/fail, a
+fork). A straight line with no branch is Steps, not Flowchart.
+
+**7. Code** — *one real snippet.*
+Slots: optional file label, one syntax-highlighted block with line
+numbers.
+Rule: one file per slide, trimmed to fit without scrolling. Two snippets
+side by side is Compare, not two Code slides.
+
+**8. Compare** — *two things, side by side.*
+Slots: two column headers (optional badge, e.g. a line count), two blocks
+of the same kind (code vs code, or text vs text).
+Rule: exactly two columns, symmetric in kind. This is the before/after and
+option-A/option-B slide.
+
+**9. Metric** — *one number that proves the point.*
+Slots: one big number/ratio, one-line label, optional small detail line
+sourcing it.
+Rule: exactly one metric, and it must be a real countable number — never a
+vibe like "much faster."
+
+**10. Takeaways** — *closes the deck.*
+Slots: heading, up to 3 checklist points, optional final callout (a
+command, a link, a next step).
+Rule: always the last slide, capped at 3 points — tighter than List, since
+this is "if you remember nothing else."
 
 ### Open questions for this round
-- Does the type list above cover everything you reach for, or is something
-  missing (e.g. a "quote" or "table" type)?
-- Should **Section** dividers be mandatory for every deck, or only inserted
-  once a deck crosses some slide-count threshold?
-- Which flowchart variant — and is it good enough to lock in, or does the
-  node-graph version need a 4th, simpler pass?
+- Is a **Quote** type missing (pulling a line from a doc/PR/teammate,
+  distinct from Statement asserting your own claim)?
+- Is a **Table** type needed for genuinely tabular data (3+ dimensions), or
+  does Compare/List cover everything in practice?
+- Are the caps right — List 3–5, Takeaways ≤3 — or too tight/loose?
